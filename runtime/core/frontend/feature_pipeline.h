@@ -32,11 +32,14 @@ struct FeaturePipelineConfig {
   int sample_rate;
   int frame_length;
   int frame_shift;
+  float frame_shift_in_ms;
   FeaturePipelineConfig()
       : num_bins(80),        // 80 dim fbank
         sample_rate(16000),  // 16k sample rate
-        frame_length(400),   // frame length 25ms,
-        frame_shift(160) {}
+        frame_length(400),   // frame length 25ms
+        frame_shift(160) {   // frame shift 10ms
+    frame_shift_in_ms = (float)frame_shift / sample_rate * 1000;
+  }
 
   void Info() const {
     LOG(INFO) << "feature pipeline config"
@@ -58,6 +61,7 @@ class FeaturePipeline {
   void AcceptWaveform(const std::vector<float>& wav);
   int num_frames() const { return num_frames_; }
   int feature_dim() const { return feature_dim_; }
+  float frame_shift_in_ms() const { return config_.frame_shift_in_ms; }
   void set_input_finished();
 
   // Return false if input_finished_ and there is no feature left in

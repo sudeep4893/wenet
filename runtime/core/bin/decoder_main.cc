@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <iomanip>
+#include <unistd.h>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -19,6 +20,7 @@
 DEFINE_int32(num_bins, 80, "num mel bins for fbank feature");
 DEFINE_int32(chunk_size, 16, "decoding chunk size");
 DEFINE_int32(num_threads, 1, "num threads for device");
+DEFINE_bool(simulate_streaming, false, "simulate streaming input");
 DEFINE_string(model_path, "", "pytorch exported model path");
 DEFINE_string(wav_scp, "", "input wav scp");
 DEFINE_string(dict_path, "", "dict path");
@@ -70,12 +72,20 @@ int main(int argc, char *argv[]) {
       auto start = std::chrono::steady_clock::now();
       bool finish = decoder.Decode();
       auto end = std::chrono::steady_clock::now();
-      decode_time +=
+      auto chunk_decode_time =
           std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
               .count();
+      decode_time += chunk_decode_time;
       LOG(INFO) << "Partial result: " << decoder.result();
+
       if (finish) {
         break;
+      } else if (FLAGS_chunk_size > 0 && FLAGS_simulate_streaming) {
+        auto wait_time = decoder.chunk_shift_in_ms() - chunk_decode_time;
+        if (wait_time > 0) {
+          LOG(INFO) << "Simulate streaming, waiting for " << wait_time << "ms";
+          usleep(wait_time * 1000);
+        }
       }
     }
     LOG(INFO) << "Final result: " << decoder.result();
